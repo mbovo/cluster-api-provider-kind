@@ -1,0 +1,6 @@
+domain: zroot.org
+layout:
+- go.kubebuilder.io/v3
+projectName: cluster-api-provider-kind
+repo: github.com/mbovo/cluster-api-provider-kind
+version: "3"
