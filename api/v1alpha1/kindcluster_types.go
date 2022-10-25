@@ -18,30 +18,61 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+const (
+	// Be sure to be called before object removal from the apiserver.
+	Finalizer = "kindcluster.infrastructure.cluster.x-k8s.io"
+)
 
 // KindClusterSpec defines the desired state of KindCluster
 type KindClusterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of KindCluster. Edit kindcluster_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
+	//+optional
+	//+nullable
+	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint,omitempty"`
+
+	//+kubebuilder:validation:Minimum=1
+	//+kubebuilder:default=1
+	ControlPlaneCount int32 `json:"controlPlaneCount,omitempty"`
+
+	//+kubebuilder:validation:Minimum=0
+	//+kubebuilder:default=0
+	WorkerCount int32 `json:"workerCount,omitempty"`
+
+	K8sVersion string `json:"k8sVersion,omitempty"`
+
+	// KIND image to use, see https://github.com/kubernetes-sigs/kind/releases for a list
+
+	//+kubebuilder:default=kindest/node:v1.25.2@sha256:9be91e9e9cdf116809841fc77ebdb8845443c4c72fe5218f3ae9eb57fdb4bace
+	Image string `json:"image,omitempty"`
 }
 
 // KindClusterStatus defines the observed state of KindCluster
 type KindClusterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+
+	// Cluster readiness
+	//+kubebuilder:default=false
+	Ready bool `json:"ready"`
+
+	// Number of nodes ready in the cluster
+	//+kubebuilder:validation:Minimum=0
+	//+kubebuilder:default=0
+	Nodes int32 `json:"nodes,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-
 // KindCluster is the Schema for the kindclusters API
+// +kubebuilder:printcolumn:name="ready",type=boolean,JSONPath=`.status.ready`,description="cluster readiness"
+// +kubebuilder:printcolumn:name="created",type=date,JSONPath=`.metadata.creationTimestamp`,description="Creatiion timestamp"
+// +kubebuilder:printcolumn:name="workers",type=integer,JSONPath=`.spec.workerCount`,priority=10,description="Number of workers nodes "
+// +kubebuilder:printcolumn:name="controlplane",type=integer,JSONPath=`.spec.controlPlaneCount`,priority=15,description="Number of nodes in control plane"
+// +kubebuilder:printcolumn:name="version",type=string,JSONPath=`.spec.k8sVersion`,priority=20,description="Kubernetes version"
+// +kubebuilder:printcolumn:name="image",type=string,JSONPath=`.spec.image`,priority=25,description="Kind image used"
+// +kubebuilder:resource:shortName={kc,kcl}
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 type KindCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
