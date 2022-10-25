@@ -21,11 +21,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/mbovo/cluster-api-provider-kind/api/v1alpha1"
 	infrastructurev1alpha1 "github.com/mbovo/cluster-api-provider-kind/api/v1alpha1"
+	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
@@ -35,9 +38,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 // KindClusterReconciler reconciles a KindCluster object
@@ -65,7 +72,7 @@ type KindClusterReconciler struct {
 func (r *KindClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, err error) {
 	logger := log.FromContext(ctx)
 
-	kindCluster := &v1alpha1.KindCluster{}
+	kindCluster := &infrastructurev1alpha1.KindCluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, kindCluster); err != nil {
 		logger.Info(fmt.Sprintf("Failed to get KindClusteter resource '%s/%s'.", req.NamespacedName.Namespace, req.NamespacedName.Name))
 		return reconcile.Result{}, client.IgnoreNotFound(err)
@@ -135,10 +142,61 @@ func filterStatusChanges() predicate.Predicate {
 func (r *KindClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	log := ctrl.LoggerFrom(ctx)
 
-	return ctrl.NewControllerManagedBy(mgr).
+	controller, err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrastructurev1alpha1.KindCluster{}).
 		WithEventFilter(predicates.ResourceNotPaused(log)).
 		WithEventFilter(predicates.ResourceIsNotExternallyManaged(log)).
 		WithEventFilter(filterStatusChanges()).
-		Complete(r)
+		Build(r)
+
+	if err != nil {
+		return errors.Wrap(err, "failed setting up with a controller manager")
+	}
+
+	// Watch for changes to Cluster resources to enque referenced KindCluster resources for reconciliation.
+	return controller.Watch(
+		&source.Kind{Type: &clusterv1.Cluster{}},
+		handler.EnqueueRequestsFromMapFunc(r.mapClusterToKindCluster(ctx, log)),
+		predicates.ClusterUnpaused(log))
+}
+
+// Map a KindCluster to the Cluster that is referencing it.
+func (r *KindClusterReconciler) mapClusterToKindCluster(ctx context.Context, log logr.Logger) handler.MapFunc {
+	return func(o client.Object) []ctrl.Request {
+
+		c, ok := o.(*clusterv1.Cluster)
+		if !ok {
+			log.Error(errors.Errorf("expected a Cluster but got a %T", o), "failed to get KindCluster for Cluster")
+			return nil
+		}
+		log = log.WithValues("func", "mapClusterToKindCluster", "cluster", c.Name, "namespace", c.Namespace)
+
+		if !c.ObjectMeta.DeletionTimestamp.IsZero() {
+			log.V(3).Info("Ignoring deleting Cluster")
+			return nil
+		}
+
+		if c.Spec.InfrastructureRef.GroupVersionKind().Kind != "KindCluster" {
+			log.V(3).Info("Cluster Has an InfrastructureRef of a wrong type, skipping resource")
+			return nil
+		}
+
+		kindCluster := &infrastructurev1alpha1.KindCluster{}
+		namspacedName := types.NamespacedName{Namespace: c.Spec.InfrastructureRef.Namespace, Name: c.Spec.InfrastructureRef.Name}
+
+		if err := r.Client.Get(ctx, namspacedName, kindCluster); err != nil {
+			log.V(3).Info("InfrastructureRef field not set yet, skipping resource")
+			return nil
+		}
+
+		if annotations.IsExternallyManaged(kindCluster) {
+			log.V(3).Info("Ignoring externally managed KindCluster")
+			return nil
+		}
+
+		log.V(3).Info("Enqueueing request for KindCluster", c.Spec.InfrastructureRef.Name)
+		return []ctrl.Request{
+			{NamespacedName: client.ObjectKey{Namespace: c.Spec.InfrastructureRef.Namespace, Name: c.Spec.InfrastructureRef.Name}},
+		}
+	}
 }
