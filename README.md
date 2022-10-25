@@ -1,8 +1,10 @@
 # cluster-api-provider-kind
-// TODO(user): Add simple overview of use/purpose
+
+Cluster API provider for KinD or CAPK (pronounced cap-cake) is a provider for creating Kubernetes clusters using KinD and Cluster API.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+
+//TODO:
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
