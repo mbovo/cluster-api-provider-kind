@@ -1,0 +1,78 @@
+# https://taskfile.dev
+
+version: '3'
+
+env:
+  IMAGE_NAME: cluster-api-provider-kind
+  IMAGE_TAG: test
+
+tasks:
+  default:
+    cmds:
+      - task -l
+    silent: true
+
+  check:
+    desc: Run all pre-commit hooks
+    cmds:
+      - pre-commit run -a
+
+  pre-commit:
+    cmds:
+      - pre-commit install
+    sources:
+      - .git/hooks/pre-commit
+      - .pre-commit-config.yaml
+    generates:
+      - .git/hooks/pre-commit
+    method: checksum
+
+  go-mod-download:
+    cmds:
+      - go mod tidy
+      - go mod verify
+    sources:
+      - go.mod
+      - go.sum
+    generates:
+      - go.sum
+    method: checksum
+
+  pre-commit-setup:
+    cmds:
+      - pip3 install pre-commit
+    status:
+      - which pre-commit
+
+
+  setup:
+    desc: Bootstrap of dev environment
+    preconditions:
+      - sh: "[ $(python3 --version | cut -d ' ' -f 2 | awk -F'.' '{print ($2 > 7) }') = 1 ]"
+        msg: "Required python version not found (>=3.7)"
+      - sh: "which go"
+        msg: "golang tools not found! (brew install golang)"
+    cmds:
+      - task: pre-commit-setup
+      - task: pre-commit
+      - task: go-mod-download
+
+  test:
+    desc: Run tests and coverage
+    cmds:
+      - go test -v ./pkg/...
+
+  test:clean:
+    desc: "Cleanup after tets"
+    cmds:
+      - echo "Cleanup"
+
+  docker:build:
+    desc: "Build test docker image"
+    cmds:
+      - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+
+  docker:clean:
+    desc: "Clean up test docker image"
+    cmds:
+      - docker rmi -f $IMAGE_NAME:$IMAGE_TAG
