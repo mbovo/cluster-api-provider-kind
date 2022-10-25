@@ -12,7 +12,7 @@ jobs:
     - uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
         go-version: '^1.19'
     - uses: pre-commit/action@v3.0.0
@@ -24,7 +24,7 @@ jobs:
       - verify
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: '^1.19'
       - name: Setup Taskfile
