@@ -25,3 +25,6 @@ Dockerfile.cross
 *.swo
 *~
 .task
+
+dist/
+templates/infrastructure-components.yaml
