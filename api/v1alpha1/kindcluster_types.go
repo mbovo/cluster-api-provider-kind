@@ -46,7 +46,7 @@ type KindClusterSpec struct {
 
 	// KIND image to use, see https://github.com/kubernetes-sigs/kind/releases for a list
 
-	//+kubebuilder:default=kindest/node:v1.25.2@sha256:9be91e9e9cdf116809841fc77ebdb8845443c4c72fe5218f3ae9eb57fdb4bace
+	//+kubebuilder:default="kindest/node:v1.25.2@sha256:9be91e9e9cdf116809841fc77ebdb8845443c4c72fe5218f3ae9eb57fdb4bace"
 	Image string `json:"image,omitempty"`
 }
 

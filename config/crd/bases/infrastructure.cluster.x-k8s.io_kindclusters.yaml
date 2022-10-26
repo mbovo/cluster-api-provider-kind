@@ -12,10 +12,42 @@ spec:
     kind: KindCluster
     listKind: KindClusterList
     plural: kindclusters
+    shortNames:
+    - kc
+    - kcl
     singular: kindcluster
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: cluster readiness
+      jsonPath: .status.ready
+      name: ready
+      type: boolean
+    - description: Creatiion timestamp
+      jsonPath: .metadata.creationTimestamp
+      name: created
+      type: date
+    - description: 'Number of workers nodes '
+      jsonPath: .spec.workerCount
+      name: workers
+      priority: 10
+      type: integer
+    - description: Number of nodes in control plane
+      jsonPath: .spec.controlPlaneCount
+      name: controlplane
+      priority: 15
+      type: integer
+    - description: Kubernetes version
+      jsonPath: .spec.k8sVersion
+      name: version
+      priority: 20
+      type: string
+    - description: Kind image used
+      jsonPath: .spec.image
+      name: image
+      priority: 25
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: KindCluster is the Schema for the kindclusters API
@@ -35,13 +67,53 @@ spec:
           spec:
             description: KindClusterSpec defines the desired state of KindCluster
             properties:
-              foo:
-                description: Foo is an example field of KindCluster. Edit kindcluster_types.go
-                  to remove/update
+              controlPlaneCount:
+                default: 1
+                format: int32
+                minimum: 1
+                type: integer
+              controlPlaneEndpoint:
+                description: ControlPlaneEndpoint represents the endpoint used to
+                  communicate with the control plane.
+                nullable: true
+                properties:
+                  host:
+                    description: The hostname on which the API server is serving.
+                    type: string
+                  port:
+                    description: The port on which the API server is serving.
+                    format: int32
+                    type: integer
+                required:
+                - host
+                - port
+                type: object
+              image:
+                default: kindest/node:v1.25.2@sha256:9be91e9e9cdf116809841fc77ebdb8845443c4c72fe5218f3ae9eb57fdb4bace
                 type: string
+              k8sVersion:
+                type: string
+              workerCount:
+                default: 0
+                format: int32
+                minimum: 0
+                type: integer
             type: object
           status:
             description: KindClusterStatus defines the observed state of KindCluster
+            properties:
+              nodes:
+                default: 0
+                description: Number of nodes ready in the cluster
+                format: int32
+                minimum: 0
+                type: integer
+              ready:
+                default: false
+                description: Cluster readiness
+                type: boolean
+            required:
+            - ready
             type: object
         type: object
     served: true
