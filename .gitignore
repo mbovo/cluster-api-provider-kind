@@ -27,3 +27,4 @@ Dockerfile.cross
 .task
 
 dist/
+templates/infrastructure-components.yaml
