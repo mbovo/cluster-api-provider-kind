@@ -44,6 +44,7 @@ jobs:
         uses: mathieudutour/github-tag-action@v5.6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: ${{ github.event_name != 'pull_request' }}
       - run: |
           echo Calculated Next Tag is ${{ steps.tag_version.outputs.new_tag }}
 
@@ -114,16 +115,6 @@ jobs:
           ../../bin/kustomize edit set image controller=docker.io/jackbit/cluster-api-provider-kind:${{ github.ref_name }} && \
           popd
           make components
-
-      - name: Release (check)
-        uses: goreleaser/goreleaser-action@v2
-        if: ${{ github.event_name == 'pull_request' }}
-        with:
-          distribution: goreleaser
-          version: latest
-          args: release --rm-dist --skip-validate --skip-publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Release
         uses: goreleaser/goreleaser-action@v2
