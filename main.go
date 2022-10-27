@@ -33,6 +33,7 @@ import (
 
 	infrastructurev1beta1 "github.com/mbovo/cluster-api-provider-kind/api/v1beta1"
 	"github.com/mbovo/cluster-api-provider-kind/controllers"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -43,7 +44,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(infrastructurev1beta1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
