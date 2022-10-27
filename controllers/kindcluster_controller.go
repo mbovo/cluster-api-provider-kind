@@ -22,8 +22,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/mbovo/cluster-api-provider-kind/api/v1alpha1"
-	infrastructurev1alpha1 "github.com/mbovo/cluster-api-provider-kind/api/v1alpha1"
+	infrastructurev1beta1 "github.com/mbovo/cluster-api-provider-kind/api/v1beta1"
 	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
@@ -72,7 +71,7 @@ type KindClusterReconciler struct {
 func (r *KindClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, err error) {
 	logger := log.FromContext(ctx)
 
-	kindCluster := &infrastructurev1alpha1.KindCluster{}
+	kindCluster := &infrastructurev1beta1.KindCluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, kindCluster); err != nil {
 		logger.Info(fmt.Sprintf("Failed to get KindClusteter resource '%s/%s'.", req.NamespacedName.Namespace, req.NamespacedName.Name))
 		return reconcile.Result{}, client.IgnoreNotFound(err)
@@ -103,7 +102,7 @@ func (r *KindClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	return r.reconcileNormal(ctx, kindCluster)
 }
 
-func (r *KindClusterReconciler) reconcileNormal(ctx context.Context, kindCluster *v1alpha1.KindCluster) (reconcile.Result, error) {
+func (r *KindClusterReconciler) reconcileNormal(ctx context.Context, kindCluster *infrastructurev1beta1.KindCluster) (reconcile.Result, error) {
 	logger := log.FromContext(ctx)
 	_, err := patch.NewHelper(kindCluster, r.Client)
 	if err != nil {
@@ -115,7 +114,7 @@ func (r *KindClusterReconciler) reconcileNormal(ctx context.Context, kindCluster
 	return reconcile.Result{}, nil
 }
 
-func (r *KindClusterReconciler) reconcileDelete(ctx context.Context, kindCluster *v1alpha1.KindCluster) (reconcile.Result, error) {
+func (r *KindClusterReconciler) reconcileDelete(ctx context.Context, kindCluster *infrastructurev1beta1.KindCluster) (reconcile.Result, error) {
 	logger := log.FromContext(ctx)
 	_, err := patch.NewHelper(kindCluster, r.Client)
 	if err != nil {
@@ -143,7 +142,7 @@ func (r *KindClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.M
 	log := ctrl.LoggerFrom(ctx)
 
 	controller, err := ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1alpha1.KindCluster{}).
+		For(&infrastructurev1beta1.KindCluster{}).
 		WithEventFilter(predicates.ResourceNotPaused(log)).
 		WithEventFilter(predicates.ResourceIsNotExternallyManaged(log)).
 		WithEventFilter(filterStatusChanges()).
@@ -181,7 +180,7 @@ func (r *KindClusterReconciler) mapClusterToKindCluster(ctx context.Context, log
 			return nil
 		}
 
-		kindCluster := &infrastructurev1alpha1.KindCluster{}
+		kindCluster := &infrastructurev1beta1.KindCluster{}
 		namspacedName := types.NamespacedName{Namespace: c.Spec.InfrastructureRef.Namespace, Name: c.Spec.InfrastructureRef.Name}
 
 		if err := r.Client.Get(ctx, namspacedName, kindCluster); err != nil {
