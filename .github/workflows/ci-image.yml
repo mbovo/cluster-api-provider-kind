@@ -111,8 +111,8 @@ jobs:
         if: ${{ github.event_name != 'pull_request' }}
         run: |
           make kustomize
-          pushd config/default/ && \
-          ../../bin/kustomize edit set image controller=docker.io/jackbit/cluster-api-provider-kind:${{ github.ref_name }} && \
+          pushd config/manager && \
+          ../../bin/kustomize edit set image controller=docker.io/jackbit/cluster-api-provider-kind:${{needs.tagging.outputs.next_tag}}&& \
           popd
           make components
 
