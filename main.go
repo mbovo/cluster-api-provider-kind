@@ -94,8 +94,9 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	if err = (&controllers.KindClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("kindcluster-controller"),
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KindCluster")
 		os.Exit(1)

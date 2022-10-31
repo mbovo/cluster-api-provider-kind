@@ -23,7 +23,7 @@ import (
 
 const (
 	// Be sure to be called before object removal from the apiserver.
-	Finalizer = "kindcluster.infrastructure.cluster.x-k8s.io"
+	KindClusterFinalizer = "kindcluster.infrastructure.cluster.x-k8s.io"
 )
 
 // KindClusterSpec defines the desired state of KindCluster
