@@ -135,7 +135,17 @@ func (r *KindClusterReconciler) reconcileNormal(ctx context.Context, kindCluster
 		return reconcile.Result{}, err
 	}
 
+	host, port, err := kind.ClusterEndpoint(ctx, kindCluster.ObjectMeta.Name)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	logger.Info("Setting controlPlaneEndpoint", "host", host, "port", port)
+
+	kindCluster.Spec.ControlPlaneEndpoint.Host = host
+	kindCluster.Spec.ControlPlaneEndpoint.Port = int32(port)
 	kindCluster.Status.Ready = true
+	kindCluster.Status.Nodes = kindCluster.Spec.WorkerCount + kindCluster.Spec.ControlPlaneCount
 	r.patcher.Patch(ctx, kindCluster)
 
 	return reconcile.Result{}, nil

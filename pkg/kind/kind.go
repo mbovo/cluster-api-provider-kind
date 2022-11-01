@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	"os/exec"
 	"strings"
@@ -25,6 +26,20 @@ func ClusterExists(ctx context.Context, clusterName string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func ClusterEndpoint(ctx context.Context, clusterName string) (host string, port int, err error) {
+	logger := log.FromContext(ctx)
+	logger.Info("Getting Kind cluster endpoint", "cluster", clusterName)
+	cmdStr := "kind get kubeconfig -n mycluster | grep server | cut -d \"/\" -f 3"
+	b, err := exec.Command("bash", "-c", cmdStr).Output()
+	if err != nil {
+		errors.Wrap(err, "failed to get kind cluster endpoint")
+	}
+	s := strings.ReplaceAll(strings.TrimSpace(string(b)), "\n", "")
+	host = strings.Split(s, ":")[0]
+	port, err = strconv.Atoi(strings.Split(s, ":")[1])
+	return
 }
 
 func ClusterCreate(ctx context.Context, clusterName string) (err error) {
