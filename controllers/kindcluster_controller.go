@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-logr/logr"
 	infrastructurev1beta1 "github.com/mbovo/cluster-api-provider-kind/api/v1beta1"
+	"github.com/mbovo/cluster-api-provider-kind/pkg/kind"
 	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -51,6 +53,7 @@ type KindClusterReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+	patcher  *patch.Helper
 }
 
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kindclusters,verbs=get;list;watch;create;update;patch;delete
@@ -73,7 +76,7 @@ func (r *KindClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	kindCluster := &infrastructurev1beta1.KindCluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, kindCluster); err != nil {
-		logger.Info(fmt.Sprintf("Failed to get KindClusteter resource '%s/%s'.", req.NamespacedName.Namespace, req.NamespacedName.Name))
+		logger.Info(fmt.Sprintf("Failed to get KindCluster resource '%s/%s'.", req.NamespacedName.Namespace, req.NamespacedName.Name))
 		return reconcile.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -93,6 +96,13 @@ func (r *KindClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, nil
 	}
 
+	// set up the patch helper
+	r.patcher, err = patch.NewHelper(kindCluster, r.Client)
+	if err != nil {
+		logger.Error(err, "cannot create patch helper")
+		return reconcile.Result{}, err
+	}
+
 	// Handle deleted clusters
 	if !kindCluster.DeletionTimestamp.IsZero() {
 		return r.reconcileDelete(ctx, kindCluster)
@@ -104,24 +114,63 @@ func (r *KindClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 func (r *KindClusterReconciler) reconcileNormal(ctx context.Context, kindCluster *infrastructurev1beta1.KindCluster) (reconcile.Result, error) {
 	logger := log.FromContext(ctx)
-	_, err := patch.NewHelper(kindCluster, r.Client)
-	if err != nil {
-		log.Log.Error(err, "cannot create patch helper")
+	logger.Info("Reconciling KindCluster")
+	// setting up the finalizer immediatlye
+	ok := controllerutil.AddFinalizer(kindCluster, infrastructurev1beta1.KindClusterFinalizer)
+	if !ok {
+		logger.Info("Finalizer already exists")
+	}
+
+	if err := r.patcher.Patch(ctx, kindCluster); err != nil {
 		return reconcile.Result{}, err
 	}
-	logger.Info("Reconciling KindCluster")
+
+	logger.Info("Search for already existing cluster", "cluster", kindCluster.ObjectMeta.Name)
+	if ok, err := kind.ClusterExists(ctx, kindCluster.ObjectMeta.Name); ok == true || err != nil {
+		logger.Info("Cluster exist, skip it", "cluster", kindCluster.ObjectMeta.Name)
+	}
+
+	err := kind.ClusterCreate(ctx, kindCluster.ObjectMeta.Name)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	host, port, err := kind.ClusterEndpoint(ctx, kindCluster.ObjectMeta.Name)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	logger.Info("Setting controlPlaneEndpoint", "host", host, "port", port)
+
+	kindCluster.Spec.ControlPlaneEndpoint.Host = host
+	kindCluster.Spec.ControlPlaneEndpoint.Port = int32(port)
+	kindCluster.Status.Ready = true
+	kindCluster.Status.Nodes = kindCluster.Spec.WorkerCount + kindCluster.Spec.ControlPlaneCount
+	r.patcher.Patch(ctx, kindCluster)
 
 	return reconcile.Result{}, nil
 }
 
 func (r *KindClusterReconciler) reconcileDelete(ctx context.Context, kindCluster *infrastructurev1beta1.KindCluster) (reconcile.Result, error) {
 	logger := log.FromContext(ctx)
-	_, err := patch.NewHelper(kindCluster, r.Client)
+
+	logger.Info("Deleting KindCluster")
+
+	// delete logic
+
+	if ok, err := kind.ClusterExists(ctx, kindCluster.ObjectMeta.Name); ok == false || err != nil {
+		logger.Info("Cluster does not exist, skip", "cluster", kindCluster.ObjectMeta.Name)
+	}
+
+	err := kind.ClusterDelete(ctx, kindCluster.ObjectMeta.Name)
 	if err != nil {
-		log.Log.Error(err, "cannot create patch helper")
 		return reconcile.Result{}, err
 	}
-	logger.Info("Reconciling deleted KindCluster")
+
+	controllerutil.RemoveFinalizer(kindCluster, infrastructurev1beta1.KindClusterFinalizer)
+	if err := r.patcher.Patch(ctx, kindCluster); err != nil {
+		return reconcile.Result{}, err
+	}
 
 	return reconcile.Result{}, nil
 }
