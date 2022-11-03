@@ -19,6 +19,7 @@ package kind
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"net/url"
@@ -105,12 +106,18 @@ func newClusterConfig(kindCluster *v1beta1.KindCluster, capiCluster *clusterv1.C
 	cfg := &v1alpha4Kind.Cluster{}
 	cfg.Name = kindCluster.Name
 
+	image := kindCluster.Spec.Image
+	if kindCluster.Spec.K8sVersion != "" {
+		img := strings.Split(image, ":")[0]
+		image = img + ":" + kindCluster.Spec.K8sVersion
+	}
+
 	// adding nodes to the kind cluster
 	for i := 0; i < int(kindCluster.Spec.ControlPlaneCount); i++ {
-		cfg.Nodes = append(cfg.Nodes, v1alpha4Kind.Node{Role: v1alpha4Kind.ControlPlaneRole, Image: kindCluster.Spec.Image})
+		cfg.Nodes = append(cfg.Nodes, v1alpha4Kind.Node{Role: v1alpha4Kind.ControlPlaneRole, Image: image})
 	}
 	for i := 0; i < int(kindCluster.Spec.WorkerCount); i++ {
-		cfg.Nodes = append(cfg.Nodes, v1alpha4Kind.Node{Role: v1alpha4Kind.WorkerRole, Image: kindCluster.Spec.Image})
+		cfg.Nodes = append(cfg.Nodes, v1alpha4Kind.Node{Role: v1alpha4Kind.WorkerRole, Image: image})
 	}
 
 	return cfg
