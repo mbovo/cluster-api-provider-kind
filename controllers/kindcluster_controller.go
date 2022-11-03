@@ -51,9 +51,10 @@ import (
 // KindClusterReconciler reconciles a KindCluster object
 type KindClusterReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
-	patcher  *patch.Helper
+	Scheme     *runtime.Scheme
+	Recorder   record.EventRecorder
+	patcher    *patch.Helper
+	kindHelper kind.KindHelper
 }
 
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kindclusters,verbs=get;list;watch;create;update;patch;delete
@@ -102,6 +103,8 @@ func (r *KindClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		logger.Error(err, "cannot create patch helper")
 		return reconcile.Result{}, err
 	}
+	// set up kind helper
+	r.kindHelper = kind.NewKindLibHelper(logger, kindCluster, cluster)
 
 	// Handle deleted clusters
 	if !kindCluster.DeletionTimestamp.IsZero() {
@@ -126,16 +129,20 @@ func (r *KindClusterReconciler) reconcileNormal(ctx context.Context, kindCluster
 	}
 
 	logger.Info("Search for already existing cluster", "cluster", kindCluster.ObjectMeta.Name)
-	if ok, err := kind.ClusterExists(ctx, kindCluster.ObjectMeta.Name); ok == true || err != nil {
-		logger.Info("Cluster exist, skip it", "cluster", kindCluster.ObjectMeta.Name)
-	}
-
-	err := kind.ClusterCreate(ctx, kindCluster.ObjectMeta.Name)
+	ok, err := r.kindHelper.Exists(ctx, kindCluster)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	host, port, err := kind.ClusterEndpoint(ctx, kindCluster.ObjectMeta.Name)
+	if !ok {
+		logger.Info("Creating cluster", "cluster", kindCluster.ObjectMeta.Name)
+		err := r.kindHelper.Create(ctx, kindCluster)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	host, port, err := r.kindHelper.Endpoint(ctx, kindCluster)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -158,11 +165,11 @@ func (r *KindClusterReconciler) reconcileDelete(ctx context.Context, kindCluster
 
 	// delete logic
 
-	if ok, err := kind.ClusterExists(ctx, kindCluster.ObjectMeta.Name); ok == false || err != nil {
+	if ok, err := r.kindHelper.Exists(ctx, kindCluster); ok == false || err != nil {
 		logger.Info("Cluster does not exist, skip", "cluster", kindCluster.ObjectMeta.Name)
 	}
 
-	err := kind.ClusterDelete(ctx, kindCluster.ObjectMeta.Name)
+	err := r.kindHelper.Delete(ctx, kindCluster)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
