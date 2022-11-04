@@ -26,9 +26,12 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o ma
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+
+# FROM gcr.io/distroless/static:nonroot
+FROM docker.io/docker:20.10.17
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER 65532:65532
+ENV DOCKER_HOST=unix:///mnt/host/docker.sock
 
 ENTRYPOINT ["/manager"]

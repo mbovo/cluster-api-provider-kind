@@ -3,7 +3,7 @@
 version: '3'
 
 env:
-  IMAGE_NAME: cluster-api-provider-kind
+  IMAGE_NAME: jackbit/cluster-api-provider-kind
   IMAGE_TAG: test
 
 tasks:

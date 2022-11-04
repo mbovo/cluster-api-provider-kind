@@ -58,6 +58,8 @@ spec:
       #               - linux
       securityContext:
         runAsNonRoot: true
+        # fsGroup must equals docker fsgroup on the underneath host, 101 is the one used by coLima
+        fsGroup: ${KIND_DOCKER_FSGROUP:=101}
         # TODO(user): For common cases that do not require escalating privileges
         # it is recommended to ensure that all your Pods/Containers are restrictive.
         # More info: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
@@ -72,6 +74,10 @@ spec:
         - --leader-elect
         image: controller:latest
         name: manager
+        volumeMounts:
+        - mountPath: /mnt/host/docker.sock
+          name: docker-socket
+          readOnly: false
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -100,3 +106,8 @@ spec:
             memory: 64Mi
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: docker-socket
+        hostPath:
+          path: /mnt/host/docker.sock
+          type: Socket
