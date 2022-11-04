@@ -120,7 +120,7 @@ jobs:
           make components
 
       - name: Release
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@v3
         if: ${{ github.event_name != 'pull_request' }}
         with:
           distribution: goreleaser
