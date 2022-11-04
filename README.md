@@ -44,8 +44,21 @@ clusterctl init --core cluster-api  --infrastructure kind -v5
 Generate KindCluster:
 
 ```bash
-clusterctl generate cluster my-cluster --kubernetes-version v1.24.7 --control-plane-machine-count=1 --worker-machine-count=1 -i kind:v0.1.3 | kubectl apply -f -
+clusterctl generate cluster my-cluster --kubernetes-version v1.24.7 --control-plane-machine-count=1 --worker-machine-count=1 -i kind:v0.1.5 | kubectl apply -f -
 ```
+
+## Improvements
+
+- [ ] Add errors to the status as per [Infrastucture provider contract](https://cluster-api.sigs.k8s.io/developer/architecture/controllers/cluster.html#infrastructure-provider)
+- [ ] Export created cluster Kubeconfig to the end user
+- [ ] Automatically retrieve kind images given a Kubernetes version
+- [ ] Add a [ControlPlane provider](https://cluster-api.sigs.k8s.io/developer/architecture/controllers/control-plane.html) to configure the controlplane and stopping Kind before starting Kubernetes (using create option `CreateWithStopBeforeSettingUpKubernetes`)
+
+## Pitfails
+
+### Github rate limiting
+
+When downloading manifest with clusterctl you can hit the github rate limit. You can set your `GITHUB_TOKEN` env variable to avoid this.
 
 ## License
 
