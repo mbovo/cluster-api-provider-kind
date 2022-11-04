@@ -1,4 +1,4 @@
-FROM kindest/node:v1.25.2
+FROM kindest/node:v1.24.7
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl gnupg lsb-release && \
   mkdir -p /etc/apt/keyrings && \
