@@ -27,7 +27,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/mbovo/cluster-api-provider-kind/api/v1beta1"
 	"github.com/mbovo/cluster-api-provider-kind/pkg/kubeconfig"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	v1alpha4Kind "sigs.k8s.io/kind/pkg/apis/config/v1alpha4"
 	kindApiCluster "sigs.k8s.io/kind/pkg/cluster"
