@@ -13,19 +13,19 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.9'
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
-        go-version: '^1.19'
-    - uses: pre-commit/action@v3.0.0
+        go-version: '1.25.0'
+    - uses: pre-commit/action@v3.0.1
     - name: Setup Taskfile
       if: ${{ github.event_name == 'pull_request' }}
-      uses: arduino/setup-task@v1
+      uses: arduino/setup-task@v2
     - name: "Integration tests"
       if: ${{ github.event_name == 'pull_request' }}
       run: make test
@@ -38,10 +38,10 @@ jobs:
     outputs:
       next_tag: ${{ steps.tag_version.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Bump version and push tag
         id: tag_version
-        uses: mathieudutour/github-tag-action@v5.6
+        uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           dry_run: ${{ github.event_name == 'pull_request' }}
@@ -57,15 +57,15 @@ jobs:
       - verify
       - tagging
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -74,7 +74,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: ${{env.IMAGE_NAME}}
           flavor: |
@@ -85,7 +85,7 @@ jobs:
             type=raw,value=${{needs.tagging.outputs.next_tag}}
 
       - name: Build and push
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           file: Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
@@ -98,16 +98,16 @@ jobs:
       - verify
       - tagging
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         if: ${{ github.event_name != 'pull_request' }}
         with:
           fetch-depth: 0
       - if: ${{ github.event_name != 'pull_request' }}
         run: git fetch --force --tags
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         if: ${{ github.event_name != 'pull_request' }}
         with:
-          go-version: '>=1.19.2'
+          go-version: '1.25.0'
           cache: true
 
       - name: Create components
@@ -120,11 +120,11 @@ jobs:
           make components
 
       - name: Release
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@v6
         if: ${{ github.event_name != 'pull_request' }}
         with:
           distribution: goreleaser
           version: latest
-          args: release --rm-dist --skip-validate
+          args: release --clean --skip=validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
