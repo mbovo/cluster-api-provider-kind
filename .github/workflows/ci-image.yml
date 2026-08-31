@@ -19,7 +19,7 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: '3.9'
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v7
       with:
         go-version: '1.25.0'
     - uses: pre-commit/action@v3.0.1
@@ -104,7 +104,7 @@ jobs:
           fetch-depth: 0
       - if: ${{ github.event_name != 'pull_request' }}
         run: git fetch --force --tags
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         if: ${{ github.event_name != 'pull_request' }}
         with:
           go-version: '1.25.0'
