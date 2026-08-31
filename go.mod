@@ -13,7 +13,7 @@ require (
 	k8s.io/client-go v0.35.8
 	sigs.k8s.io/cluster-api v1.13.5
 	sigs.k8s.io/controller-runtime v0.23.3
-	sigs.k8s.io/kind v0.32.0
+	sigs.k8s.io/kind v0.33.0
 )
 
 require (
